@@ -10,9 +10,9 @@ file { '/etc/default/tftpd-hpa':
 	replace => true,
 }
 
-file { "/tftpboot/PaceCVC_parker_snmp.bin":
-	path => "/tftpboot/PaceCVC_parker_snmp.bin",
-	source => "puppet:///backend_files/PaceCVC_parker_snmp.bin",
+file { "/tftpboot/docsis_standard.bin":
+	path => "/tftpboot/docsis_standard.bin",
+	source => "puppet:///backend_files/docsis_standard.bin",
 }
 
 #Move to DNS files - this needs addressing, the config file is overwritten and specific elements are replaced. It needs to remain consistent... Look at using custom facts perhaps.
