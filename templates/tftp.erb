@@ -1,0 +1,32 @@
+service tftp
+{
+        disable                 = no
+        socket_type             = dgram
+        protocol                = udp
+        wait                    = yes
+        user                    = root
+        server                  = /usr/sbin/in.tftpd
+        #server_args             = --logfile /var/log/tftpd-6.log --tftpd-timeout 5 -v -v -v -v /tftpboot
+        server_args             = -v -s /tftpboot
+        disable                 = no
+        per_source              = 11
+        cps                     = 100 2
+        instances               = UNLIMITED
+        flags                   = IPV6
+}
+service tftp
+{
+        disable                 = no
+        socket_type             = dgram
+        protocol                = udp
+        wait                    = yes
+        user                    = root
+        server                  = /usr/sbin/in.tftpd
+        #server_args             = --logfile /var/log/tftpd-4.log --tftpd-timeout 5 -v -v -v -v /tftpboot
+        server_args             = -v -s /tftpboot
+        disable                 = no
+        per_source              = 11
+        cps                     = 100 2
+        instances               = UNLIMITED
+        flags                   = IPv4
+}

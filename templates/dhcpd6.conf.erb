@@ -1,0 +1,35 @@
+default-lease-time 2592000;
+preferred-lifetime 604800;
+option dhcp-renewal-time 3600;
+option dhcp-rebinding-time 7200;
+allow leasequery;
+option dhcp6.name-servers 3ffe:501:ffff:100:200:ff:fe00:3f3e;
+option dhcp6.domain-search ".internal";
+
+option dhcp6.info-refresh-time 21600;
+dhcpv6-lease-file-name "/var/lib/dhcp/dhcpd6.leases";
+
+option space docsis code width 2 length width 2;
+option vsio.docsis code 4491 = encapsulate docsis;
+option docsis.tftp-servers code 32 = array of ip6-address;
+option docsis.cablelabs-configuration-file code 33 = text;
+option docsis.cablelabs-syslog-servers code 34 = array of ip6-address;
+option docsis.device-id code 36 = string;
+option docsis.time-servers code 37 = array of ip6-address;
+option docsis.time-offset code 38 = signed integer 32;
+
+subnet6 2002::0a03:0100/120 {
+#        range6 2002::0a03:010a 2002::0a03:01c8;
+        option docsis.cablelabs-configuration-file "docsis_standard.bin";
+        option docsis.tftp-servers <%= @ipaddress6 %>;
+        option docsis.time-servers <%= @ipaddress6 %>;
+        option docsis.time-offset -1;
+#	prefix6 2002:0a03:2000:: 2002:0a03:2000:ff00:: /56;
+}
+
+#Static config file used for allocating set configurations to specific boxes.
+
+#group { #<Group name>
+#  filename "<filename>" ;
+#  host <hostname> { hardware ethernet <MAC address> ; fixed-address <IPv6 address> ; }
+#}

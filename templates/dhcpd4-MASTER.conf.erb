@@ -1,0 +1,71 @@
+ddns-update-style none;
+lease-file-name "/var/lib/dhcp/dhcpd4.leases";
+default-lease-time 10000;
+max-lease-time 10000;
+authoritative;
+log-facility local7;
+option space vendor-encaps-options code width 1 length width 1 hash size 9;
+option vendor-encaps-options.acs-url code 1 = string;
+option vendor-encaps-options.nico-url code 2 = string;
+option vendor-encaps code 43 = encapsulate vendor-encaps-options;
+
+# define option 122 CableLabs Clients Configuration
+option space cablelabs-clients-conf code width 1 length width 1 hash size 9;
+option cablelabs-clients-conf.primary-dhcp code 1 = ip-address;
+option cablelabs-clients-conf.secondary-dhcp code 2 = ip-address;
+option cablelabs-clients-conf.provisioning-server code 3 = string;
+option cablelabs-clients-conf.asreq-asrep-timers code 4 = string;
+option cablelabs-clients-conf.apreq-aprep-timers code 5 = string;
+option cablelabs-clients-conf.kerberos-realm-name code 6 = string;
+option cablelabs-clients-conf.tgt code 7 = boolean;
+option cablelabs-clients-conf.provisioning-timer code 8 = unsigned integer 8;
+option cablelabs-clients code 122 = encapsulate cablelabs-clients-conf;
+
+#The following code allows different IP's to be allocated different configurations, replace the <example_CMTS> file with your own CMTS.
+
+class "default" {
+  match if (binary-to-ascii(10,8, ".", packet(24,4)) = "<example_CMTS>");
+}
+
+shared-network cable {
+<% if @network_eth0 != nil %>
+subnet <%= network_eth0 %> netmask <%= @netmask %>
+<% else %> 
+subnet <%= network_he %> netmask <%= @netmask %>
+<% end %>
+{
+#	pool {
+#		allow members of "default";
+#		range 10.0.0.2 10.0.0.5; #An IP on this range will need to exist on at least one interface.
+#	}
+	next-server <%= @ipaddress %>;
+	filename "docsis_standard.bin";
+	option routers 10.0.0.1;
+	option time-servers <%= @ipaddress %>;
+	option domain-name ".internal";
+	option domain-name-servers <%= @ipaddress %>;
+	option cablelabs-clients-conf.primary-dhcp <%= @ipaddress %>;
+	option cablelabs-clients-conf.secondary-dhcp <%= @ipaddress %>;
+}
+
+#class "<example1>" {
+#  match if (binary-to-ascii(10,8, ".", packet(24,4)) = "<example_CMTS1>");
+#}
+
+#subnet <example_network> netmask <example_netmask>
+#{
+#	pool {
+#		allow members of "<example1>";
+#		range 192.168.0.1 192.168.0.255;
+#	}
+#	next-server <%= @ipaddress %>;
+#	filename "example_tftp_file.bin";
+#	option routers 127.0.0.1;
+#	option time-servers <%= @ipaddress %>;
+#	option domain-name "pace.internal";
+#	option domain-name-servers <%= @ipaddress %>;
+#	option cablelabs-clients-conf.primary-dhcp <%= @ipaddress %>;
+#	option cablelabs-clients-conf.secondary-dhcp <%= @ipaddress %>;
+#}
+
+}

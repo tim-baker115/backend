@@ -1,0 +1,23 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interfaces
+auto eth0
+iface eth0 inet static
+        address <%= @ipaddress %>
+        netmask <%= @netmask %>
+
+#Bridge a secondary interface to eth0
+auto he
+iface he inet static
+        address <%= @ipaddress %>
+        netmask <%= @netmask %>
+        pre-up   brctl addbr he
+        pre-up   brctl addif he eth0
+        pre-up   /sbin/ifconfig eth0 0
+	pre-down /sbin/ifconfig he down
+        post-down brctl delbr he

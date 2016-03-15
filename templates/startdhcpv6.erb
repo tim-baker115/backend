@@ -1,0 +1,109 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          dhcpv6
+# Required-Start:    $remote_fs
+# Required-Stop:     $remote_fs
+# Should-Start:      $network $syslog
+# Should-Stop:       $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start and stop dhcpv6
+# Description:       dhcpv6
+#                    which gives IPV6 addresses to C4C CMTS for CMs
+### END INIT INFO
+
+function stop_dhcp () {
+        echo "Killing current DHCP server instances (V4+V6)"
+	pkill -9 -f dhcpd
+        killall -q -9 dhcpd
+        if [ $? -gt 0 ]; then
+                echo "Failed to kill DHCP, is dhcpd running?"
+        fi
+	if [ -f /var/run/dhcp-server/dhcpd-6.pid ]; then
+		kill -9 $(cat /var/run/dhcp-server/dhcpd-6.pid) >/dev/null 2>&1
+	fi
+	if [ -f /var/run/dhcp-server/dhcpd-4.pid ]; then
+                kill -9 $(cat /var/run/dhcp-server/dhcpd-4.pid) >/dev/null 2>&1
+        fi
+	#Try one more time for luck...
+	sleep 1
+	pkill -9 -f dhcpd4
+        killall -q -9 dhcpd4
+	pkill -9 -f dhcpd6
+        killall -q -9 dhcpd6
+	ps -ef | grep dhcp
+}
+
+function pre_network () {
+	#This is only needed if alternative networks or IPv6 addresses are to be used (e.g interface exists on a 192.168.0.X network and dhcp is configure to distribute 10.0.0.X IP's).
+	#ifconfig he <IPv4 network required for DHCP> netmask <IPv4 netmask required for DHCP> >/dev/null 2>&1
+	#This is only needed if alternative networks are to be used (e.g interface exists on a 192.168.0.X network and dhcp is configure to distribute 10.0.0.X IP's). For IPv6 a host address needs to be assigned before a network address can be used on the interface, thus it's brought up and then dropped in the post-network section
+	ifconfig he inet6 add 2002::0a03:010a
+}
+
+function start_v6 () {
+        echo "Starting DHCP V6 server" >> /var/log/dhcpd-6.log
+        echo -en "Starting DHCP V6 .... "
+        dhcpd -6 -pf /var/run/dhcp-server/dhcpd-6.pid -cf /etc/dhcpd6.conf >> /var/log/dhcpd-6.log 2>&1  &
+        #As dhcpd always exits with a zero error code (even if it's not working), use an alternate method to check for functionality...
+        RUNNING_v6=$(ps -ef | grep dhcpd6 | grep -iv grep | wc -l)
+        if [ $RUNNING_v6 -gt 0 ]; then
+                echo "SUCCESSFUL"
+                cp -f /etc/dhcpd6.conf /etc/dhcp-config-backups/dhcpd6.conf.$(date +"%d-%b-%Y")
+        else
+                echo "UNSUCCESSFUL (last successful backup stored in /etc/dhcp-config-backups/)"
+        fi
+}
+
+function start_v4 () {
+        echo "Starting DHCP V4 server" >> /var/log/dhcpd-4.log
+        echo -en "Starting DHCP V4 .... "
+        dhcpd -4 -pf /var/run/dhcp-server/dhcpd-4.pid -cf /etc/dhcpd4.conf -lf /var/lib/dhcp/dhcpd4.leases >> /var/log/dhcpd-4.log 2>&1  &
+        RUNNING_v4=$(ps -ef | grep dhcpd4 | grep -iv grep | wc -l)
+        if [ $RUNNING_v4 -gt 0 ]; then
+                echo "SUCCESSFUL"
+                cp -f /etc/dhcpd4.conf /etc/dhcp-config-backups/dhcpd4.conf.$(date +"%d-%b-%Y")
+        else
+                echo "UNSUCCESSFUL (last successful backup stored in /etc/dhcp-config-backups/)"
+        fi
+}
+
+function post_network () {
+        sleep 3;
+	ip -6 addr del dev he 2002::0a03:010a >/dev/null 2>&1
+	ip -6 addr add dev he <%= @ipaddress6 %>/120 >/dev/null 2>&1
+        ifconfig he <%= @ipaddress %> netmask <%= @netmask %> 2>&1 #restore the ip
+        route add default dev he gw 172.29.100.1 >/dev/null 2>&1
+	#Some examples of adding routes (IPv6, IPv4 and a host).	
+	#route add -net <IPv4 network>/<IPv4 netmask> dev he gw <CMTS IP address> >/dev/null 2>&1
+        #route add -host <IPv4 Host address>/32 dev he gw <CMTS IP address> >/dev/null 2>&1
+	ip -6 route add <%= @ipaddress6 %>/120 dev he >/dev/null 2>&1
+	ip -6 route add 2002::0a03:0100/120 dev he via <%= @ipaddress6 %> >/dev/null 2>&1
+        exit 0
+}
+
+case "$1" in
+        start)
+		pre_network
+		start_v4
+		start_v6
+		post_network	
+        	;;
+        stop)
+		stop_dhcp
+        	;;
+        restart)
+		stop_dhcp
+		pre_network
+		start_v4
+		start_v6
+		post_network
+        	;;
+        *)
+		echo $"Usage: $0 {start|stop|restart|status}"
+		exit 1;
+        	;;
+esac
+
+exit $?
